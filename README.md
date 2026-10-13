@@ -1,4 +1,4 @@
-# service-core
+# atc-service-core
 
 Shared cross-cutting infrastructure for the [atc-web](https://github.com/alitalipcalikoglu?tab=repositories) services: config parsing, a SQLite base class, audit-event forwarding, API-key auth, an outbound SSRF guard/signer/HTTP transport, graceful process shutdown, and small Fastify helpers. No domain logic, no service orchestration, no app factory — every service still owns its own `Fastify(...)` instance, schema, and business rules.
 
@@ -12,17 +12,17 @@ Every atc-web service is its own independent repository (`atc-web/<name>/`, copy
 
 **Responsibilities:** everything above, as composable classes/functions a service imports and wires itself.
 
-**Non-responsibilities:** service-core ≠ domain framework — no service-specific table names, route names, or business rules live here, and it defines no app factory a service inherits its whole shape from; each service still builds its own `Fastify(...)` instance, schema and domain logic. See "What deliberately stayed local" below for concrete examples of things that look shareable but were deliberately kept out.
+**Non-responsibilities:** atc-service-core ≠ domain framework — no service-specific table names, route names, or business rules live here, and it defines no app factory a service inherits its whole shape from; each service still builds its own `Fastify(...)` instance, schema and domain logic. See "What deliberately stayed local" below for concrete examples of things that look shareable but were deliberately kept out.
 
 ## Install
 
 Not published to any registry — installed straight from GitHub, pinned to a tag:
 
 ```
-npm install github:alitalipcalikoglu/service-core#v1.11.1
+npm install github:alitalipcalikoglu/atc-service-core#v1.11.1
 ```
 
-A service's `package.json` then has `"@atc-web/service-core": "github:alitalipcalikoglu/service-core#v1.11.1"`, and `npm ci` resolves and clones that exact tagged commit — no private registry, no simultaneous-upgrade requirement across services. Every consuming service pins its own tag independently; see [VERSIONING.md](VERSIONING.md).
+A service's `package.json` then has `"@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.11.1"`, and `npm ci` resolves and clones that exact tagged commit — no private registry, no simultaneous-upgrade requirement across services. Every consuming service pins its own tag independently; see [VERSIONING.md](VERSIONING.md).
 
 ## Modules
 
@@ -30,16 +30,16 @@ Each is a separate `exports` subpath so a service only pulls in what it uses. "A
 
 | Import | Contents | Adopters |
 |---|---|---|
-| `@atc-web/service-core/config` | `EnvReader`, `ConfigError`, `parseApiKeys`, `parseAudit`, `parseTarget` | 12/12 |
-| `@atc-web/service-core/db` | `Database` (subclass with your own `static MIGRATIONS`; ordered, transactional, tracked in `schema_migrations`, pre-migration snapshot, forward-version guard, `inTransaction` — see below) | 12/12 |
-| `@atc-web/service-core/audit` | `AuditClient` — buffered/batched mode (fail-safe forwarding to the audit service) for most services, or outbox mode (`{ outbox }`) for a service with a durability requirement on the event itself — see below | 11/12 (not audit itself) |
-| `@atc-web/service-core/auth` | `ApiKeyAuth` (bearer key auth; decoration shape and role rules are options) | 11/12 (not console — session+TOTP admin auth, no API keys) |
-| `@atc-web/service-core/lifecycle` | `Lifecycle.install(...)` — signal handling, ordered shutdown steps, force-exit | 12/12 |
-| `@atc-web/service-core/fastify` | `jsonParser`, `createErrorHandler`, `registerProbes`, `metricsText`, `registerInfo`/`readServiceVersion`/`SERVICE_CORE_VERSION` (Stage 7: `/v1/info`); `requestOptions`/`registerRequestContext` (Phase 5: the shared `requestIdHeader`/`genReqId`/logger block, and the per-request `RequestContext` + trace-aware log binding) | 12/12 (including console, via `registerInfo` directly — see below) |
-| `@atc-web/service-core/http` | `HttpCaller`, `CallError`, `NetGuard`, `NetGuardError`, `Signer` | 2/12 (scheduler, webhook-out — the only two services that make caller-supplied outbound HTTP calls) |
-| `@atc-web/service-core/secrets` | `SecretBox` — AES-256-GCM sealing of a small secret at rest, versioned format (`v1.` single-key; `v2.` embeds a `keyId` for a caller managing more than one key — e.g. rotation), key supplied by the caller (never stored in the database) | 2/12 (webhook-out on `v1.`, console on `v2.` — its own `TotpKeyring` builds the current/previous rotation logic on top; this stays a single-key primitive) |
-| `@atc-web/service-core/trace` | `TraceContext` — W3C `traceparent` subset parse/generate, mirroring `gateway/src/trace-context.js`'s convention exactly (source of truth; gateway itself has no dependency on this package) | 11/12 (every backend consumer; not console, which imports it indirectly via `./request-context`) |
-| `@atc-web/service-core/request-context` | `RequestContext` — `AsyncLocalStorage`-based per-request correlation state (`requestId` + `TraceContext`), explicit opt-in `propagationHeaders()` for a trusted-internal outbound call | 12/12 |
+| `@atc-web/atc-service-core/config` | `EnvReader`, `ConfigError`, `parseApiKeys`, `parseAudit`, `parseTarget` | 12/12 |
+| `@atc-web/atc-service-core/db` | `Database` (subclass with your own `static MIGRATIONS`; ordered, transactional, tracked in `schema_migrations`, pre-migration snapshot, forward-version guard, `inTransaction` — see below) | 12/12 |
+| `@atc-web/atc-service-core/audit` | `AuditClient` — buffered/batched mode (fail-safe forwarding to the audit service) for most services, or outbox mode (`{ outbox }`) for a service with a durability requirement on the event itself — see below | 11/12 (not audit itself) |
+| `@atc-web/atc-service-core/auth` | `ApiKeyAuth` (bearer key auth; decoration shape and role rules are options) | 11/12 (not console — session+TOTP admin auth, no API keys) |
+| `@atc-web/atc-service-core/lifecycle` | `Lifecycle.install(...)` — signal handling, ordered shutdown steps, force-exit | 12/12 |
+| `@atc-web/atc-service-core/fastify` | `jsonParser`, `createErrorHandler`, `registerProbes`, `metricsText`, `registerInfo`/`readServiceVersion`/`SERVICE_CORE_VERSION` (Stage 7: `/v1/info`); `requestOptions`/`registerRequestContext` (Phase 5: the shared `requestIdHeader`/`genReqId`/logger block, and the per-request `RequestContext` + trace-aware log binding) | 12/12 (including console, via `registerInfo` directly — see below) |
+| `@atc-web/atc-service-core/http` | `HttpCaller`, `CallError`, `NetGuard`, `NetGuardError`, `Signer` | 2/12 (scheduler, webhook-out — the only two services that make caller-supplied outbound HTTP calls) |
+| `@atc-web/atc-service-core/secrets` | `SecretBox` — AES-256-GCM sealing of a small secret at rest, versioned format (`v1.` single-key; `v2.` embeds a `keyId` for a caller managing more than one key — e.g. rotation), key supplied by the caller (never stored in the database) | 2/12 (webhook-out on `v1.`, console on `v2.` — its own `TotpKeyring` builds the current/previous rotation logic on top; this stays a single-key primitive) |
+| `@atc-web/atc-service-core/trace` | `TraceContext` — W3C `traceparent` subset parse/generate, mirroring `gateway/src/trace-context.js`'s convention exactly (source of truth; gateway itself has no dependency on this package) | 11/12 (every backend consumer; not console, which imports it indirectly via `./request-context`) |
+| `@atc-web/atc-service-core/request-context` | `RequestContext` — `AsyncLocalStorage`-based per-request correlation state (`requestId` + `TraceContext`), explicit opt-in `propagationHeaders()` for a trusted-internal outbound call | 12/12 |
 
 Every module's own JSDoc explains the exact contract and which per-service behavior stays local (e.g. `ApiKeyAuth`'s `decorate` option, `Lifecycle`'s caller-supplied `steps` order, `createErrorHandler`'s `extra` hook).
 
@@ -49,7 +49,7 @@ Every module's own JSDoc explains the exact contract and which per-service behav
 
 Before the first pending migration on a database that already has data (`user_version > 0`), the file is snapshotted with `VACUUM INTO` to `<path>.pre-v<current>-<timestamp>` next to the database file (override the directory with the constructor's `backupDir` option) — skipped for `:memory:` and for a brand new file, since there is nothing to protect yet. `VACUUM INTO` takes its own consistent read snapshot, so this is safe to run against a live WAL database with concurrent readers. If a database's `user_version` is ahead of what the running build's `MIGRATIONS` array supports, the constructor throws `ConfigError` before touching anything — an old build refuses to open a newer schema.
 
-`db.schemaVersion` exposes the current version (for `/v1/info`); `db.lastBackupPath` is the snapshot path from the open that just ran, or `null` when none was taken; `db.inTransaction` is true while a `transaction()` callback is running — check it before calling `transaction()` again on the same connection (SQLite has no nested transactions), the pattern an outbox-style insert needs to work correctly whether or not the caller already has one open (see `@atc-web/service-core/audit`'s outbox mode below).
+`db.schemaVersion` exposes the current version (for `/v1/info`); `db.lastBackupPath` is the snapshot path from the open that just ran, or `null` when none was taken; `db.inTransaction` is true while a `transaction()` callback is running — check it before calling `transaction()` again on the same connection (SQLite has no nested transactions), the pattern an outbox-style insert needs to work correctly whether or not the caller already has one open (see `@atc-web/atc-service-core/audit`'s outbox mode below).
 
 See `stack/docs/UPGRADE.md` for how this fits together with `stack backup`/`stack restore` across the whole workspace.
 

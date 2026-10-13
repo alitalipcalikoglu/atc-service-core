@@ -18,7 +18,7 @@ const MIGRATIONS_TABLE = `
  * changes, so an existing service's schema and migration content move here unmodified:
  *
  * ```js
- * import { Database as CoreDatabase } from '@atc-web/service-core/db';
+ * import { Database as CoreDatabase } from '@atc-web/atc-service-core/db';
  * export class Database extends CoreDatabase {
  *   static MIGRATIONS = [`CREATE TABLE ...`];
  * }

@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto';
  * Post-production Phase 5: previously removed from this package (see `test/exports.test.js`'s own
  * history note) for having zero real adopters. This time it has concrete ones — every backend
  * Fastify consumer plus console — driven by a real audit finding, not spun up speculatively.
- * `gateway` itself still has no `@atc-web/service-core` dependency (a deliberate, unrelated,
+ * `gateway` itself still has no `@atc-web/atc-service-core` dependency (a deliberate, unrelated,
  * standing choice) and keeps its own copy; the two are behaviourally identical by construction; a
  * change to one's validation rules should be mirrored in the other by hand.
  */

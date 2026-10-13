@@ -1,11 +1,11 @@
 # Versioning and dependency strategy
 
-`service-core` is not published to npm or any private registry. Every consuming service installs it
+`atc-service-core` is not published to npm or any private registry. Every consuming service installs it
 directly from this GitHub repository, pinned to a semver git tag:
 
 ```json
 "dependencies": {
-  "@atc-web/service-core": "github:alitalipcalikoglu/service-core#v1.0.0"
+  "@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.0.0"
 }
 ```
 
