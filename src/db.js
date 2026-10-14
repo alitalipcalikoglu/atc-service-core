@@ -1,5 +1,5 @@
 import { basename, dirname, join } from 'node:path';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { ConfigError } from './config.js';
 
@@ -208,6 +208,15 @@ export class Database {
     mkdirSync(dir, { recursive: true });
     const dest = join(dir, `${basename(this.path)}.pre-v${currentVersion}-${Date.now()}-${process.pid}`);
     this.raw.prepare('VACUUM INTO ?').run(dest);
+    // A concurrent process may have migrated between our version read and the VACUUM; that
+    // snapshot is not pre-migration, and the winner already took its own before migrating.
+    const snap = new DatabaseSync(dest, { readOnly: true });
+    const taken = /** @type {{ user_version: number }} */ (snap.prepare('PRAGMA user_version').get()).user_version;
+    snap.close();
+    if (taken !== currentVersion) {
+      rmSync(dest, { force: true });
+      return;
+    }
     this.lastBackupPath = dest;
   }
 
