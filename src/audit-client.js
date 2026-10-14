@@ -80,7 +80,7 @@ export class AuditClient {
   }
 
   /**
-   * Route config for {@link AuditClient.hook}: `config: { audit: AuditClient.route('flags.flag.update', (r) => ({ type: 'flag', id: r.params.key })) }`.
+   * Route config for {@link AuditClient.hook}: `config: { audit: AuditClient.route('atc-flags.flag.update', (r) => ({ type: 'flag', id: r.params.key })) }`.
    * @param {string} action
    * @param {AuditRouteConfig['target']} [target]
    * @param {AuditRouteConfig['meta']} [meta]
