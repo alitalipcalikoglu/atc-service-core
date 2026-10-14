@@ -1,6 +1,6 @@
 {
   "name": "@atc-web/atc-service-core",
-  "version": "1.14.0",
+  "version": "1.14.1",
   "description": "Shared cross-cutting infrastructure for atc-web services: config parsing, SQLite base class, audit forwarding, API-key auth, outbound HTTP guard/signing, process lifecycle, Fastify helpers. No domain logic.",
   "license": "MIT",
   "repository": {
