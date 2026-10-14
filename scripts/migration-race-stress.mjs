@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Post-production Phase 1: empirical stress verification, additional to (never a replacement for)
-// the deterministic barrier-controlled regression in `test/migration-race.test.js`. Mirrors the
-// original POST_PRODUCTION_AUDIT.md reproduction technique exactly — plain `child_process.spawn` +
+// the deterministic barrier-controlled regression in `test/migration-race.test.js`. Uses plain
+// `child_process.spawn` +
 // `Promise.all`, real OS processes, no IPC barrier — so its failure rate is directly comparable to
 // the audit's own 75-run, ~92%-loser-crash baseline. Not part of `npm test`; run by hand:
 //   node --disable-warning=ExperimentalWarning scripts/migration-race-stress.mjs [runs]

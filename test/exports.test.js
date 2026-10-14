@@ -4,7 +4,7 @@ import { test } from 'node:test';
 
 /**
  * Contract test: every subpath a service will `import` must actually resolve and export the
- * classes/functions the modules described in IMPLEMENTATION_PLAN.md's Stage 2 table promise. A
+ * classes/functions the README's module table promises. A
  * package.json `exports` typo or a forgotten export would otherwise only surface as a runtime
  * error in the first *service* that adopts it.
  */

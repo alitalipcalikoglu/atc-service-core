@@ -68,7 +68,7 @@ Two modules were built and shipped mid-stage on the assumption a real consumer w
 
 ## What deliberately stayed local
 
-Not everything that looks similar across services moved here — see `atc-stack/docs/ARCHITECTURE_AUDIT.md`'s Stage 2 section and each service's own adoption commit for the full accounting:
+Not everything that looks similar across services moved here:
 
 - **notify's outbound webhook signing** (`channels/webhook.js`) was not migrated to this package's `Signer`/`HttpCaller`. Its signature verification uses `Buffer.prototype.equals` instead of a timing-safe comparison — a known, already-tracked defect scheduled for its own fix in a later stage. Adopting core's (correct) `Signer` would have silently changed that behavior as a side effect of an "extraction" stage.
 - **auth's error handler and JWT/password/session logic** — the login-lockout `retry-after` header lives inside the same branch `createErrorHandler` would dispatch on, not a separately classed case its `extra` hook cleanly covers; forcing that shape would touch security-relevant response behavior. All of JWT signing, password hashing and session/token stores were never candidates — this package has no such modules and none of it is cross-cutting.

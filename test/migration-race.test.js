@@ -53,8 +53,8 @@ test('two real processes racing a pending migration on the same file: both succe
   final.close();
 
   // Backup: at least one pre-migration snapshot exists, and every one that does is a valid,
-  // independently-openable v1 database (the pre-migration state) — see POST_PRODUCTION_PLAN.md
-  // Phase 1 §5 for why this may legitimately be more than one file under a genuine race (VACUUM INTO
+  // independently-openable v1 database (the pre-migration state). This may legitimately be more
+  // than one file under a genuine race (VACUUM INTO
   // cannot run inside a transaction, so the backup step itself isn't lock-serialized the way the
   // migration application is; the invariant this asserts is "always at least one, always valid,
   // always pre-migration", not "always exactly one").

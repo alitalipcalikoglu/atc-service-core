@@ -60,8 +60,7 @@ const MIGRATIONS_TABLE = `
  * is — under a real race, more than one process may each take a (redundant but harmless, since
  * neither has migrated anything yet at that point) backup; every backup taken is always valid and
  * always represents the state strictly before any migration SQL in this open. See
- * `atc-stack/docs/POST_PRODUCTION_PLAN.md` Phase 1 and `test/migration-race.test.js` for the full
- * reasoning and the real cross-process regression this guarantees.
+ * `test/migration-race.test.js` for the real cross-process regression this guarantees.
  *
  * This guarantee is specifically about *this database file's own local startup migration*, opened
  * by processes on the *same host* through `node:sqlite`. It says nothing about network filesystems,
