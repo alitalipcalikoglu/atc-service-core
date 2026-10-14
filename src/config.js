@@ -91,12 +91,17 @@ export class EnvReader {
  * @param {string} raw
  * @param {string} envName Used only in error messages.
  * @param {{ roles?: readonly string[], scopePattern?: RegExp, scopeValidate?: (scope: string) => boolean, scopeNoun?: string, minSecretLength?: number, roleErrorMessage?: (roles: readonly string[]) => string }} [opts]
- * @returns {{ id: string, secret: string, role: string|undefined, scopes: string[]|null }[]}
+ * @returns {{ id: string, secret: string, role: string|undefined, scopes: string[]|null, expires?: number }[]}
  */
 export function parseApiKeys(raw, envName, { roles, scopePattern, scopeValidate, scopeNoun = 'scope', minSecretLength = 32, roleErrorMessage } = {}) {
   const scopesEnabled = Boolean(scopePattern || scopeValidate);
   const maxParts = !roles ? 2 : (scopesEnabled ? 4 : 3);
-  const keys = raw.split(',').map((s) => s.trim()).filter(Boolean).map((entry) => {
+  const keys = raw.split(',').map((s) => s.trim()).filter(Boolean).map((rawEntry) => {
+    // Optional expiry: `id:secret[:role[:scopes]]@YYYY-MM-DD` (valid through the end of that day, UTC).
+    const expiry = /@(\d{4}-\d{2}-\d{2})$/.exec(rawEntry);
+    const entry = expiry ? rawEntry.slice(0, expiry.index) : rawEntry;
+    const expires = expiry ? Date.parse(`${expiry[1]}T23:59:59.999Z`) : null;
+    if (expiry && Number.isNaN(expires)) throw new ConfigError(`${envName} entry "${entry.slice(0, 8)}…" has an invalid expiry date`);
     // Roleless mode splits on the first ":" only, so a secret may itself contain a colon
     // (auth/media/notify's real, consistent parsing today); role/scope mode splits on every ":"
     // since a role and scope list can never contain one.
@@ -107,7 +112,7 @@ export function parseApiKeys(raw, envName, { roles, scopePattern, scopeValidate,
       const secret = entry.slice(idx + 1);
       if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw new ConfigError(`${envName} id "${id}" must match [A-Za-z0-9_-]{1,64}`);
       if (secret.length < minSecretLength) throw new ConfigError(`${envName} secret for "${id}" must be at least ${minSecretLength} characters`);
-      return { id, secret, role: undefined, scopes: null };
+      return { id, secret, role: undefined, scopes: null, ...(expires === null ? {} : { expires }) };
     }
     const parts = entry.split(':');
     if (parts.length < 2 || parts.length > maxParts) {
@@ -126,7 +131,7 @@ export function parseApiKeys(raw, envName, { roles, scopePattern, scopeValidate,
         if (scopeValidate && !scopeValidate(s)) throw new ConfigError(`${envName} key "${id}" names unknown ${scopeNoun} "${s}"`);
       }
     }
-    return { id, secret, role: effectiveRole, scopes };
+    return { id, secret, role: effectiveRole, scopes, ...(expires === null ? {} : { expires }) };
   });
   if (keys.length === 0) throw new ConfigError(`${envName} must contain at least one key`);
   if (new Set(keys.map((k) => k.id)).size !== keys.length) throw new ConfigError(`${envName} ids must be unique`);

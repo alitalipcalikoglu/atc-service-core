@@ -84,3 +84,25 @@ test('assertScope: null scopes means every scope allowed; a non-matching scope t
   assert.doesNotThrow(() => ApiKeyAuth.assertScope(key(['a', 'b']), 'a', makeError));
   assert.throws(() => ApiKeyAuth.assertScope(key(['a']), 'b', makeError), DomainError);
 });
+
+test('key expiry: an expired key is refused like an unknown one; last use and metrics never carry secrets', async () => {
+  const { parseApiKeys } = await import('../src/config.js');
+  const keys = parseApiKeys(`old:${'o'.repeat(32)}:read@2026-10-14,new:${'n'.repeat(32)}:read,forever:${'f'.repeat(32)}`, 'K', { roles: ['read', 'readwrite'] });
+  assert.deepEqual(keys.map((k) => k.expires ?? null), [Date.parse('2026-10-14T23:59:59.999Z'), null, null]);
+  let now = Date.parse('2026-10-14T12:00:00Z');
+  const auth = new ApiKeyAuth(keys, { now: () => now });
+  assert.equal(auth.identify('o'.repeat(32))?.id, 'old', 'valid through the end of its day');
+  now = Date.parse('2026-10-15T00:00:00Z');
+  assert.equal(auth.identify('o'.repeat(32)), undefined);
+  assert.equal(auth.identify('n'.repeat(32))?.id, 'new');
+  const d = auth.describe();
+  assert.deepEqual(d.map((k) => [k.id, k.expired, k.expires, k.lastUsed !== null]), [['old', true, '2026-10-14T23:59:59.999Z', true], ['new', false, null, true], ['forever', false, null, false]]);
+  const text = auth.metricLines().join('\n');
+  assert.match(text, /api_key_expired\{key="old"\} 1/);
+  assert.match(text, /api_key_last_used_timestamp_seconds\{key="new"\}/);
+  assert.equal(text.includes('o'.repeat(32)) || text.includes('n'.repeat(32)), false);
+  assert.throws(() => parseApiKeys(`a:${'a'.repeat(32)}@2026-13-45`, 'K', { roles: ['read'] }), /invalid expiry/);
+  // Roleless mode (secret may contain a colon) takes the same suffix.
+  const roleless = parseApiKeys(`svc:${'s'.repeat(32)}@2030-01-01`, 'K');
+  assert.deepEqual([roleless[0].secret.length, roleless[0].expires], [32, Date.parse('2030-01-01T23:59:59.999Z')]);
+});
