@@ -5,7 +5,7 @@ directly from this GitHub repository, pinned to a semver git tag:
 
 ```json
 "dependencies": {
-  "@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.0.0"
+  "@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.14.1"
 }
 ```
 
@@ -22,8 +22,8 @@ atc-web service ("copy the folder, `npm ci`, run").
 
 ## Why every service pins its own tag, not a floating range
 
-Each service's `package.json` names one exact tag (`#v1.0.0`, later `#v1.1.0`, ...), never a range
-like `^1.0.0` or `main`. A git dependency has no semver-range resolution the way a registry
+Each service's `package.json` names one exact tag (for example `#v1.14.1`), never a range like
+`^1.14.0` or `main`. A git dependency has no semver-range resolution the way a registry
 dependency does — even if it did, floating every service on `main` would mean **a single commit to
 this repository silently changes the runtime behavior of all 12 consuming services on their next
 `npm ci`**, with no per-service review point. Pinning means:
