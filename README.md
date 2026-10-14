@@ -19,10 +19,10 @@ Every atc-web service is its own independent repository (`atc-web/<name>/`, copy
 Not published to any registry — installed straight from GitHub, pinned to a tag:
 
 ```
-npm install github:alitalipcalikoglu/atc-service-core#v1.18.0
+npm install github:alitalipcalikoglu/atc-service-core#v1.19.0
 ```
 
-A service's `package.json` then has `"@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.18.0"`, and `npm ci` resolves and clones that exact tagged commit — no private registry, no simultaneous-upgrade requirement across services. Every consuming service pins its own tag independently; see [VERSIONING.md](VERSIONING.md).
+A service's `package.json` then has `"@atc-web/atc-service-core": "github:alitalipcalikoglu/atc-service-core#v1.19.0"`, and `npm ci` resolves and clones that exact tagged commit — no private registry, no simultaneous-upgrade requirement across services. Every consuming service pins its own tag independently; see [VERSIONING.md](VERSIONING.md).
 
 ## Modules
 
