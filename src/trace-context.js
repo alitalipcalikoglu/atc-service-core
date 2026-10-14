@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 /**
  * A W3C `traceparent` value: `00-<32 hex trace-id>-<16 hex parent-id>-<2 hex flags>`. This is a
- * subset of the full spec — exactly the fields and validation `gateway/src/trace-context.js`
+ * subset of the full spec — exactly the fields and validation `atc-gateway/src/trace-context.js`
  * (source of truth: the first, already-tested implementation in this codebase) already enforces,
  * reproduced here rather than reinvented. Not a fit for a `list-format-header` or a future
  * `tracestate` — this codebase has never needed either.
@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto';
  * Post-production Phase 5: previously removed from this package (see `test/exports.test.js`'s own
  * history note) for having zero real adopters. This time it has concrete ones — every backend
  * Fastify consumer plus console — driven by a real audit finding, not spun up speculatively.
- * `gateway` itself still has no `@atc-web/atc-service-core` dependency (a deliberate, unrelated,
+ * `atc-gateway` itself still has no `@atc-web/atc-service-core` dependency (a deliberate, unrelated,
  * standing choice) and keeps its own copy; the two are behaviourally identical by construction; a
  * change to one's validation rules should be mirrored in the other by hand.
  */
@@ -36,7 +36,7 @@ export class TraceContext {
   /**
    * Parses a raw header value. Rejects (returns `null`, never throws) anything that isn't exactly
    * `00-<32 hex>-<16 hex>-<2 hex>`, lower-case, or whose trace-id or span-id is all-zero (the W3C
-   * spec's reserved "absent" value) — matching `gateway/src/trace-context.js#parse` field for
+   * spec's reserved "absent" value) — matching `atc-gateway/src/trace-context.js#parse` field for
    * field, including the strict version check (only literal `"00"`, not future-proofed) and the
    * lower-case-only requirement (upper-case hex is a well-formed-looking header this deliberately
    * still rejects, same as gateway).
@@ -57,7 +57,7 @@ export class TraceContext {
    * pass `false` (or omit `header`) and this always starts a brand-new trace, the same as a
    * malformed or missing header would. This is a correlation decision only: whatever `trusted`
    * ends up meaning for a given caller (see `RequestContext`'s own doc and
-   * `stack/docs/OBSERVABILITY.md`) must never be confused with, or substituted for, an
+   * `atc-stack/docs/OBSERVABILITY.md`) must never be confused with, or substituted for, an
    * authentication or authorization decision.
    * @param {unknown} header
    * @param {boolean} trusted

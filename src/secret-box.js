@@ -102,7 +102,7 @@ export class SecretBox {
   /**
    * A short, deterministic, non-secret fingerprint of a key, for tagging sealed values with which
    * key produced them (`v2.` format) without storing or deriving anything sensitive — same idea as
-   * `AnchorSigner.keyId` in `audit`, applied to a symmetric key's raw bytes instead of a public key.
+   * `AnchorSigner.keyId` in `atc-audit`, applied to a symmetric key's raw bytes instead of a public key.
    * @param {Buffer} key
    */
   static keyId(key) {

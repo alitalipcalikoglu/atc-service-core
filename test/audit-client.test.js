@@ -131,7 +131,7 @@ test('AuditClient outbox mode: record() is refused — inserting is the caller\'
 test('AuditClient outbox mode: flush drains pending rows using their own stable id, marks them sent, and purges once per tick', async () => {
   const outbox = new FakeOutbox();
   outbox.insert('id-1', { action: 'atc-auth.user.create', outcome: 'success' }, 1_700_000_000_000);
-  outbox.insert('id-2', { action: 'auth.user.login', outcome: 'success' }, 1_700_000_001_000);
+  outbox.insert('id-2', { action: 'atc-auth.user.login', outcome: 'success' }, 1_700_000_001_000);
   const fetch = fakeFetch([{ status: 200 }]);
   const client = new AuditClient({ target: { url: 'http://a.test', apiKey: 'k'.repeat(32) }, logger: nullLogger(), fetch, sleep: async () => {}, outbox });
 

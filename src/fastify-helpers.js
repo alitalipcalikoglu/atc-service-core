@@ -221,8 +221,8 @@ export function metricsText(lines) {
  * pattern as `registerProbes`, meant for `stack status --matrix` and the console's About view as
  * much as for a human hitting the URL.
  *
- * Field semantics (documented once here, not repeated per service — see `stack/docs/API_CONTRACT.md`):
- * - `service`: the manifest id (e.g. `"notify"`), not a display label.
+ * Field semantics (documented once here, not repeated per service — see `atc-stack/docs/API_CONTRACT.md`):
+ * - `service`: the manifest id (e.g. `"atc-notify"`), not a display label.
  * - `version`: the service's own package semver — a release number, unrelated to the API contract.
  * - `apiVersion`: the `/v1` HTTP contract version this instance serves. Independent of `version`:
  *   a service can ship many package releases (`1.4.0`, `1.9.0`, ...) while `apiVersion` stays

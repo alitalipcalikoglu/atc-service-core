@@ -12,7 +12,7 @@ const als = new AsyncLocalStorage();
  *
  * **Trace identifiers are correlation metadata, not authentication or authorization identities.**
  * Nothing in this class, or anywhere this class's value is read, may be used to make a security,
- * rate-limit, or tenant decision — see `stack/docs/OBSERVABILITY.md`'s "Trust model" for the full
+ * rate-limit, or tenant decision — see `atc-stack/docs/OBSERVABILITY.md`'s "Trust model" for the full
  * statement this codebase holds to.
  */
 export class RequestContext {

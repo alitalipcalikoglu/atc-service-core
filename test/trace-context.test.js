@@ -6,7 +6,7 @@ const HEX32 = /^[0-9a-f]{32}$/;
 const HEX16 = /^[0-9a-f]{16}$/;
 
 /**
- * Post-production Phase 5. This mirrors `gateway/test/trace-context.test.js` field for field — the
+ * Post-production Phase 5. This mirrors `atc-gateway/test/trace-context.test.js` field for field — the
  * two `TraceContext` implementations are meant to behave identically (gateway is the source of
  * convention, has no `@atc-web/atc-service-core` dependency to share code with) — plus the full
  * regression matrix item 15 of the phase spec calls for explicitly (malformed separators, non-hex,
