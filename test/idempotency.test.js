@@ -81,6 +81,19 @@ test('AuditClient.hook skips replays', async () => {
   assert.equal(recorded.length, 1);
 });
 
+test('Idempotency: skip predicate leaves matching requests alone (credentials, tokens)', async () => {
+  const raw = new DatabaseSync(':memory:');
+  const a = Fastify();
+  a.addHook('onRequest', async (r) => { /** @type {any} */ (r).apiKey = { id: 'shop' }; });
+  Idempotency.register(a, { raw, skip: (r) => r.url.startsWith('/auth/') });
+  let n = 0;
+  a.post('/auth/login', async () => ({ token: `t${++n}` }));
+  await a.ready();
+  for (let i = 0; i < 2; i++) await a.inject({ method: 'POST', url: '/auth/login', payload: { password: 'x' }, headers: { 'idempotency-key': 'login-k-1' } });
+  assert.equal(n, 2);
+  assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM service_idempotency').get()?.n, 0, 'nothing about the request is stored');
+});
+
 test('Ids: one format, per-kind pattern', () => {
   const id = Ids.create('usr', Date.parse('2026-10-16T10:00:00Z'));
   assert.match(id, Ids.ANY);

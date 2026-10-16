@@ -27,8 +27,10 @@ export class Idempotency {
    * @param {import('node:sqlite').DatabaseSync} o.raw  The service database connection.
    * @param {number} [o.ttlMs]
    * @param {() => number} [o.now]
+   * @param {(request: import('fastify').FastifyRequest) => boolean} [o.skip]  Requests to leave alone, e.g. ones carrying credentials or answering with tokens (never stored).
    */
-  constructor({ raw, ttlMs = Idempotency.TTL_MS, now = Date.now }) {
+  constructor({ raw, ttlMs = Idempotency.TTL_MS, now = Date.now, skip = () => false }) {
+    this.skip = skip;
     this.ttlMs = ttlMs;
     this.now = now;
     this.inserts = 0;
@@ -49,7 +51,7 @@ export class Idempotency {
   /**
    * Install the hooks on a Fastify instance (before its routes are declared).
    * @param {import('fastify').FastifyInstance} app
-   * @param {{ raw: import('node:sqlite').DatabaseSync, ttlMs?: number, now?: () => number }} o
+   * @param {{ raw: import('node:sqlite').DatabaseSync, ttlMs?: number, now?: () => number, skip?: (request: import('fastify').FastifyRequest) => boolean }} o
    */
   static register(app, o) {
     const idem = new Idempotency(o);
@@ -73,7 +75,7 @@ export class Idempotency {
     if (request.method !== 'POST') return false;
     const header = request.headers[Idempotency.HEADER];
     if (header === undefined) return false;
-    if (/** @type {any} */ (request.routeOptions?.config)?.idempotency === false) return false;
+    if (/** @type {any} */ (request.routeOptions?.config)?.idempotency === false || this.skip(request)) return false;
     const keyId = Idempotency.#keyOf(request);
     const body = /** @type {any} */ (request.body);
     if (!keyId || (body && typeof body.pipe === 'function')) return false;
