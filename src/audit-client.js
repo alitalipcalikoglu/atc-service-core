@@ -202,7 +202,7 @@ export class AuditClient {
       const cfg = /** @type {AuditRouteConfig|undefined} */ (/** @type {any} */ (request.routeOptions?.config)?.audit);
       if (!cfg || !client?.enabled) return payload;
       // An Idempotency-Key replay did not run the write again; it was recorded the first time.
-      if (reply.getHeader('idempotent-replayed') === 'true') return payload;
+      if (reply.getHeader?.('idempotent-replayed') === 'true') return payload;
       const status = reply.statusCode;
       if (status >= 400 && status !== 403) return payload;
       let body = null;
