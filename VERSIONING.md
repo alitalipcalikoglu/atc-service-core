@@ -25,7 +25,7 @@ atc-web service ("copy the folder, `npm ci`, run").
 Each service's `package.json` names one exact tag (for example `#v1.32.0`), never a range like
 `^1.14.0` or `main`. A git dependency has no semver-range resolution the way a registry
 dependency does — even if it did, floating every service on `main` would mean **a single commit to
-this repository silently changes the runtime behavior of all 12 consuming services on their next
+this repository silently changes the runtime behavior of all 19 consuming services (every HTTP service except atc-gateway) on their next
 `npm ci`**, with no per-service review point. Pinning means:
 
 - Adopting service-core into a new service, or upgrading an existing one to a newer core version, is
