@@ -1,15 +1,21 @@
 import { createHash } from 'node:crypto';
 
 /**
- * `Idempotency-Key` for every POST write, the same way in every service. A client that may retry a
+ * `Idempotency-Key` for POST writes, the same way in every service. A client that may retry a
  * POST (timeout, lost connection) sends a key of its choosing; the first request runs and its 2xx
  * JSON answer is stored for `ttlMs`; a repeat with the same key and the same request answers the
  * stored response again with `Idempotent-Replayed: true` instead of running twice. The same key
  * with a different method, path or body is `409 IDEMPOTENCY_MISMATCH`; a repeat while the first is
- * still running is `409 IDEMPOTENCY_IN_PROGRESS`. Keys are scoped per API key. Non-2xx answers are
- * not stored, so a failed request can be retried with the same key. Requests without the header,
- * without an authenticated key, with a streamed body, or on routes with `config.idempotency: false`
- * (routes whose domain already deduplicates) are left alone.
+ * still running is `409 IDEMPOTENCY_IN_PROGRESS`. Non-2xx answers are not stored, so a failed request
+ * can be retried with the same key.
+ *
+ * Opt-in per route: only routes declared with `config: { idempotent: true }` take part. A route
+ * whose answer carries a secret (token, TOTP secret, recovery codes, signed URL, API key) must never
+ * opt in, because the stored answer would be served again. Keys are scoped per caller identity: the
+ * API key id plus `subjectOf(request)` (by default the `X-Actor` header and a hash of an
+ * `X-Access-Token` / `Authorization` end-user token), so another person on the same key is never
+ * served someone else's stored answer. Requests without the header, without an authenticated key
+ * or with a streamed body are left alone.
  *
  * Rows live in the service's own SQLite file (`service_idempotency`, created on first use, outside
  * the service's migrations), so several processes on one database share them.
@@ -27,10 +33,10 @@ export class Idempotency {
    * @param {import('node:sqlite').DatabaseSync} o.raw  The service database connection.
    * @param {number} [o.ttlMs]
    * @param {() => number} [o.now]
-   * @param {(request: import('fastify').FastifyRequest) => boolean} [o.skip]  Requests to leave alone, e.g. ones carrying credentials or answering with tokens (never stored).
+   * @param {(request: import('fastify').FastifyRequest) => string} [o.subjectOf]  Who is calling beyond the API key.
    */
-  constructor({ raw, ttlMs = Idempotency.TTL_MS, now = Date.now, skip = () => false }) {
-    this.skip = skip;
+  constructor({ raw, ttlMs = Idempotency.TTL_MS, now = Date.now, subjectOf = Idempotency.defaultSubject }) {
+    this.subjectOf = subjectOf;
     this.ttlMs = ttlMs;
     this.now = now;
     this.inserts = 0;
@@ -51,7 +57,7 @@ export class Idempotency {
   /**
    * Install the hooks on a Fastify instance (before its routes are declared).
    * @param {import('fastify').FastifyInstance} app
-   * @param {{ raw: import('node:sqlite').DatabaseSync, ttlMs?: number, now?: () => number, skip?: (request: import('fastify').FastifyRequest) => boolean }} o
+   * @param {{ raw: import('node:sqlite').DatabaseSync, ttlMs?: number, now?: () => number, subjectOf?: (request: import('fastify').FastifyRequest) => string }} o
    */
   static register(app, o) {
     const idem = new Idempotency(o);
@@ -68,6 +74,17 @@ export class Idempotency {
   }
 
   /**
+   * The person behind a request on a shared key: the console's `X-Actor`, and a hash of an end-user
+   * access token (`X-Access-Token`), never the token itself.
+   * @param {import('fastify').FastifyRequest} request
+   */
+  static defaultSubject(request) {
+    const actor = request.headers['x-actor'];
+    const token = request.headers['x-access-token'];
+    return `${typeof actor === 'string' ? actor : ''}|${typeof token === 'string' ? createHash('sha256').update(token).digest('hex') : ''}`;
+  }
+
+  /**
    * @param {import('fastify').FastifyRequest} request @param {import('fastify').FastifyReply} reply
    * @returns {boolean} true when this hook answered the request (replay or refusal)
    */
@@ -75,8 +92,9 @@ export class Idempotency {
     if (request.method !== 'POST') return false;
     const header = request.headers[Idempotency.HEADER];
     if (header === undefined) return false;
-    if (/** @type {any} */ (request.routeOptions?.config)?.idempotency === false || this.skip(request)) return false;
-    const keyId = Idempotency.#keyOf(request);
+    if (/** @type {any} */ (request.routeOptions?.config)?.idempotent !== true) return false;
+    const apiKeyId = Idempotency.#keyOf(request);
+    const keyId = apiKeyId ? `${apiKeyId}|${this.subjectOf(request)}` : null;
     const body = /** @type {any} */ (request.body);
     if (!keyId || (body && typeof body.pipe === 'function')) return false;
     if (typeof header !== 'string' || !Idempotency.KEY.test(header)) {

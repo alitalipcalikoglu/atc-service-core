@@ -14,9 +14,11 @@ async function app(now = () => Date.now()) {
   a.addHook('onRequest', async (r) => { const k = r.headers['x-key']; /** @type {any} */ (r).apiKey = k ? { id: String(k) } : null; });
   Idempotency.register(a, { raw, now });
   let n = 0;
-  a.post('/things', async (r, reply) => reply.code(201).send({ n: ++n, body: r.body }));
-  a.post('/fail', async (_r, reply) => { n++; return reply.code(422).send({ error: { code: 'NOPE', message: 'x' } }); });
-  a.post('/own', { config: { idempotency: false } }, async () => ({ n: ++n }));
+  const on = { config: { idempotent: true } };
+  a.post('/things', on, async (r, reply) => reply.code(201).send({ n: ++n, body: r.body }));
+  a.post('/fail', on, async (_r, reply) => { n++; return reply.code(422).send({ error: { code: 'NOPE', message: 'x' } }); });
+  a.post('/own', async () => ({ n: ++n }));
+  a.post('/mfa/setup', async () => ({ secret: `s${++n}` }));
   a.get('/things', async () => ({ n }));
   await a.ready();
   return { a, count: () => n, raw };
@@ -46,14 +48,14 @@ test('Idempotency: mismatch, bad keys, failures are not stored, opt-out routes',
   assert.equal(count(), 3, 'a failed request runs again on retry');
   await post(a, '/own', {}, { 'idempotency-key': 'key-00003' });
   await post(a, '/own', {}, { 'idempotency-key': 'key-00003' });
-  assert.equal(count(), 5, 'routes that deduplicate themselves are left alone');
+  assert.equal(count(), 5, 'routes that did not opt in are left alone');
   assert.equal((await a.inject({ method: 'POST', url: '/things', payload: {}, headers: { 'idempotency-key': 'key-00004' } })).statusCode, 201, 'unauthenticated: left alone');
 });
 
 test('Idempotency: in-progress and expiry', async () => {
   let t = Date.parse('2026-10-16T10:00:00Z');
   const { a, count, raw } = await app(() => t);
-  raw.prepare("INSERT INTO service_idempotency (key_id, idem_key, request_hash, state, created_at) VALUES ('shop', 'key-busy-1', 'h', 'running', ?)").run(t);
+  raw.prepare("INSERT INTO service_idempotency (key_id, idem_key, request_hash, state, created_at) VALUES (?, 'key-busy-1', 'h', 'running', ?)").run(`shop|${Idempotency.defaultSubject(/** @type {any} */ ({ headers: {} }))}`, t);
   const busy = await post(a, '/things', {}, { 'idempotency-key': 'key-busy-1' });
   assert.equal(busy.json().error.code, 'IDEMPOTENCY_MISMATCH', 'a different request under the same key is a mismatch even while running');
   raw.prepare("UPDATE service_idempotency SET request_hash = ? WHERE idem_key = 'key-busy-1'").run(
@@ -75,23 +77,30 @@ test('AuditClient.hook skips replays', async () => {
   a.addHook('onRequest', async (r) => { /** @type {any} */ (r).apiKey = { id: 'shop' }; });
   Idempotency.register(a, { raw });
   a.addHook('onSend', AuditClient.hook(client));
-  a.post('/x', { config: { audit: AuditClient.route('svc.thing.create') } }, async () => ({ ok: true }));
+  a.post('/x', { config: { idempotent: true, audit: AuditClient.route('svc.thing.create') } }, async () => ({ ok: true }));
   await a.ready();
   for (let i = 0; i < 2; i++) await a.inject({ method: 'POST', url: '/x', payload: {}, headers: { 'idempotency-key': 'audit-k-1' } });
   assert.equal(recorded.length, 1);
 });
 
-test('Idempotency: skip predicate leaves matching requests alone (credentials, tokens)', async () => {
-  const raw = new DatabaseSync(':memory:');
-  const a = Fastify();
-  a.addHook('onRequest', async (r) => { /** @type {any} */ (r).apiKey = { id: 'shop' }; });
-  Idempotency.register(a, { raw, skip: (r) => r.url.startsWith('/auth/') });
-  let n = 0;
-  a.post('/auth/login', async () => ({ token: `t${++n}` }));
-  await a.ready();
-  for (let i = 0; i < 2; i++) await a.inject({ method: 'POST', url: '/auth/login', payload: { password: 'x' }, headers: { 'idempotency-key': 'login-k-1' } });
-  assert.equal(n, 2);
+test('Idempotency: a secret-returning route that did not opt in is never stored or replayed', async () => {
+  const { a, count, raw } = await app();
+  const one = await post(a, '/mfa/setup', {}, { 'idempotency-key': 'mfa-k-0001', 'x-access-token': 'tok-a' });
+  const two = await post(a, '/mfa/setup', {}, { 'idempotency-key': 'mfa-k-0001', 'x-access-token': 'tok-a' });
+  assert.notEqual(one.json().secret, two.json().secret);
+  assert.equal(count(), 2);
   assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM service_idempotency').get()?.n, 0, 'nothing about the request is stored');
+});
+
+test('Idempotency: another identity on the same key is never served the stored answer', async () => {
+  const { a, count } = await app();
+  await post(a, '/things', { x: 1 }, { 'idempotency-key': 'shared-k-01', 'x-actor': 'ayse' });
+  const other = await post(a, '/things', { x: 1 }, { 'idempotency-key': 'shared-k-01', 'x-actor': 'mehmet' });
+  assert.equal(other.headers['idempotent-replayed'], undefined);
+  const user2 = await post(a, '/things', { x: 1 }, { 'idempotency-key': 'shared-k-01', 'x-access-token': 'tok-b' });
+  assert.equal(user2.headers['idempotent-replayed'], undefined);
+  assert.equal(count(), 3);
+  assert.equal((await post(a, '/things', { x: 1 }, { 'idempotency-key': 'shared-k-01', 'x-actor': 'ayse' })).headers['idempotent-replayed'], 'true');
 });
 
 test('Ids: one format, per-kind pattern', () => {
