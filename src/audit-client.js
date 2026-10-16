@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { Ids } from './ids.js';
 
 /**
  * @typedef {{ warn: (obj: object, msg?: string) => void, error: (obj: object, msg?: string) => void }} AuditLogger
@@ -104,7 +104,7 @@ export class AuditClient {
       this.stats.dropped++;
       this.logger.warn({ buffered: this.buffer.length }, 'audit buffer full, dropping oldest event');
     }
-    this.buffer.push({ id: randomUUID(), at: new Date().toISOString(), ...e });
+    this.buffer.push({ id: Ids.create('aud'), at: new Date().toISOString(), ...e });
     this.stats.recorded++;
     return true;
   }
