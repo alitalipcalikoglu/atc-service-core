@@ -17,7 +17,7 @@ test('package.json declares the exact subpaths this package actually has real ad
   // needing it, so it shipped speculative and was cut. This time it has concrete adopters (all 11
   // backend Fastify consumers plus console), driven by a real audit finding with tested trust
   // semantics, not speculative infrastructure.
-  assert.deepEqual(Object.keys(pkg.exports).sort(), ['./audit', './auth', './config', './db', './fastify', './http', './lifecycle', './log', './secrets', './trace', './request-context'].sort());
+  assert.deepEqual(Object.keys(pkg.exports).sort(), ['./audit', './auth', './config', './db', './fastify', './http', './lifecycle', './log', './secrets', './trace', './request-context', './idempotency', './ids'].sort());
 });
 
 test('every subpath resolves and exports its documented members', async () => {

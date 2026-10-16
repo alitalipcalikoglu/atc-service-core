@@ -22,7 +22,9 @@
     "./fastify": "./src/fastify-helpers.js",
     "./secrets": "./src/secret-box.js",
     "./trace": "./src/trace-context.js",
-    "./request-context": "./src/request-context.js"
+    "./request-context": "./src/request-context.js",
+    "./idempotency": "./src/idempotency.js",
+    "./ids": "./src/ids.js"
   },
   "scripts": {
     "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\"",
